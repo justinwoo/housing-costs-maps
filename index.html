@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF8">
+    <title>Map fun</title>
+    <style type="text/css" media="all">
+      .sections {
+        height: 600px;
+        width: 1440px;
+        margin: auto;
+        position: relative;
+      }
+
+      .sections > div {
+        box-sizing: border-box;
+        border: 2px solid white;
+        position: absolute;
+        display: inline-block;
+        width: 33%;
+        height: 100%;
+      }
+      .asia {
+        left: 33%;
+      }
+      .us {
+        left: 66%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="datamap" class="sections">
+      <div id="datamap-europe"></div>
+      <div id="datamap-asia" class="asia"></div>
+      <div id="datamap-us" class="us"></div>
+    </div>
+    <div id="app">
+    </div>
+    <script src="build/index.js"></script>
+  </body>
+</html>
