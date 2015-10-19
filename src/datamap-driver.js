@@ -1,6 +1,8 @@
 import Datamap from 'datamaps'
 import d3 from 'd3';
 
+import getCoordinates from './get-coordinates';
+
 function getProjection(region) {
   if (region === 'europe') {
     return function(element) {
@@ -83,6 +85,32 @@ export default function makeDatamapDriver(region, container) {
         return a;
       }, {});
       datamap.updateChoropleth(choroPleth);
+
+      let bubbles = statistics.byCity.map(({name, price}) => {
+        console.log('name', name);
+        let result = getCoordinates(name);
+        console.log('result', result);
+        let {radius, coords} = getCoordinates(name);
+        let [latitude, longitude] = coords;
+        return {
+          name,
+          latitude,
+          longitude,
+          radius,
+          price,
+          fillKey: getColor(price)
+        };
+      });
+      datamap.bubbles(bubbles, {
+        popupTemplate: function(geo, data) {
+          return [
+            '<div class="hoverinfo"><strong>',
+            `${data.name}: `,
+            `${data.price}`,
+            '</div>'
+          ].join('');
+        }
+      });
     });
   };
 }

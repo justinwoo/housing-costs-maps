@@ -59,7 +59,7 @@ function main(drivers) {
   let statistics$ = state$
     .map(state => {
       let byCountryTally = state.locations.reduce((a, v) => {
-        let {name, country, price} = v;
+        let {country, price} = v;
         if (!a[country]) {
           a[country] = [price];
         } else {
@@ -78,8 +78,29 @@ function main(drivers) {
         });
       }
 
+      let byCityTally = state.locations.reduce((a, v) => {
+        let {name, price} = v;
+        if (!a[name]) {
+          a[name] = [price];
+        } else {
+          a[name].push(price);
+        }
+        return a;
+      }, {});
+
+      let byCity = [];
+      for (let name in byCityTally) {
+        let prices = byCityTally[name];
+        let price = prices.reduce((a, b) => a + b) / prices.length;
+        byCity.push({
+          name,
+          price
+        });
+      }
+
       return {
-        byCountry
+        byCountry,
+        byCity
       };
     });
 
@@ -109,7 +130,7 @@ function makeTableDataDriver() {
     ['Groningen', 'NLD', 45.00],
     ['Rotterdam', 'NLD', 48.00],
     ['Leuven', 'BEL', 29.21],
-    ['San Franciso', 'USA', 113],
+    ['San Francisco', 'USA', 113],
   ];
 
   let locations = data.map((v, i) => ({
