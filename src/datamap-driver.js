@@ -53,30 +53,41 @@ function getColor(value) {
   else return 'HIGH';
 }
 
-export default function makeDatamapDriver(region, container) {
-  var datamap = new Datamap({
-    element: document.getElementById(container),
-    setProjection: getProjection(region),
-    geographyConfig: {
-      popupTemplate: function(geo, data) {
-        return [
-          '<div class="hoverinfo"><strong>',
-          `${geo.properties.name}`,
-          data ? `: ${data.price}` : '',
-          '</strong></div>'
-        ].join('');
-      }
-    },
-    fills: {
-      LOW: '#2ca02c',
-      MEDIUM: '#ff7f0e',
-      HIGH: '#d62728',
-      defaultFill: "lightgrey"
-    }
-  });
-
+export default function makeDatamapDriver(region) {
   return function datamapDriver(input$) {
-    input$.subscribe(statistics => {
+    let datamap;
+
+    input$.subscribe(({container, statistics}) => {
+      if (!container) {
+        datamap = null;
+        return;
+      } else if (!datamap) {
+        datamap = new Datamap({
+          element: container,
+          setProjection: getProjection(region),
+          geographyConfig: {
+            popupTemplate: function(geo, data) {
+              return [
+                '<div class="hoverinfo"><strong>',
+                `${geo.properties.name}`,
+                data ? `: ${data.price}` : '',
+                '</strong></div>'
+              ].join('');
+            }
+          },
+          fills: {
+            LOW: '#2ca02c',
+            MEDIUM: '#ff7f0e',
+            HIGH: '#d62728',
+            defaultFill: "lightgrey"
+          }
+        });
+      }
+
+      if (!datamap) {
+        return;
+      }
+
       let choroPleth = statistics.byCountry.reduce((a, country) => {
         a[country.name] = {
           price: country.price,
@@ -87,9 +98,7 @@ export default function makeDatamapDriver(region, container) {
       datamap.updateChoropleth(choroPleth);
 
       let bubbles = statistics.byCity.map(({name, price}) => {
-        console.log('name', name);
         let result = getCoordinates(name);
-        console.log('result', result);
         let {radius, coords} = getCoordinates(name);
         let [latitude, longitude] = coords;
         return {

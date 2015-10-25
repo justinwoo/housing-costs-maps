@@ -1,13 +1,9 @@
+import Rx from 'rx';
 import Cycle from '@cycle/core';
 import {makeDOMDriver, h} from '@cycle/dom';
-import Rx from 'rx';
 
+import makeTableDataDriver from './table-data-driver';
 import makeDatamapDriver from './datamap-driver';
-
-function log(name, value) {
-  console.log(name, value);
-  return value;
-}
 
 function locationsList(locations) {
   let children = locations.map(location =>
@@ -20,12 +16,50 @@ function locationsList(locations) {
   return h('table', h('tbody', children));
 }
 
+function alternativeView(state) {
+  return Rx.Observable.interval(1000).map(function (time) {
+    if (time % 2 === 0) {
+      return h('div');
+    } else {
+      return h('div', [
+        h('div', {id: 'datamap', className: 'sections'}, [
+          h('div', {className: 'datamap-europe'}),
+          h('div', {className: 'datamap-asia'}),
+          h('div', {className: 'datamap-us'})
+        ]),
+        h('div', {style: {width: '300px', margin: 'auto'}}, [
+          locationsList(state.locations)
+        ])
+      ]);
+    }
+  });
+}
+
 function view(state) {
   return h('div', [
+    h('div', {id: 'datamap', className: 'sections'}, [
+      h('div', {className: 'datamap-europe'}),
+      h('div', {className: 'datamap-asia'}),
+      h('div', {className: 'datamap-us'})
+    ]),
     h('div', {style: {width: '300px', margin: 'auto'}}, [
       locationsList(state.locations)
     ])
   ]);
+}
+
+function prepareDataMap$(container$, statistics$) {
+  return Rx.Observable.combineLatest(
+    container$, statistics$,
+    (container, statistics) => ({
+      container, statistics
+    })
+  );
+}
+
+function getDOMElement$(DOMDriver, selector) {
+  const DOMObservable = DOMDriver.select(selector).observable;
+  return DOMObservable.map(results => results[0]);
 }
 
 //Location : {
@@ -104,54 +138,24 @@ function main(drivers) {
       };
     });
 
+  let containerEU$ = getDOMElement$(drivers.DOM, '.datamap-europe');
+  let containerAS$ = getDOMElement$(drivers.DOM, '.datamap-asia');
+  let containerUS$ = getDOMElement$(drivers.DOM, '.datamap-us');
+
   return {
     DOM: view$,
-    DataMapEU: statistics$,
-    DataMapAS: statistics$,
-    DataMapUS: statistics$
-  };
-}
-
-function makeTableDataDriver() {
-  let data = [
-    ['Tokyo', 'JPN', 37.86],
-    ['Nagoya', 'JPN', 47.71],
-    ['Kyoto', 'JPN', 59.29],
-    ['Nagoya', 'JPN', 49.57],
-    ['Tokyo', 'JPN', 64.43],
-    ['Aomori', 'JPN', 47.00],
-    ['Hakodate', 'JPN', 56.00],
-    ['Sapporo', 'JPN', 33.11],
-    ['Hong Kong', 'HKG', 46.70],
-    ['Washington', 'USA', 56.86],
-    ['Helsinki', 'FIN', 48.13],
-    ['Copenhagen', 'DNK', 39.50],
-    ['Hamburg', 'DEU', 59.00],
-    ['Groningen', 'NLD', 45.00],
-    ['Rotterdam', 'NLD', 48.00],
-    ['Leuven', 'BEL', 29.21],
-    ['San Francisco', 'USA', 113],
-  ];
-
-  let locations = data.map((v, i) => ({
-    id: i,
-    name: v[0],
-    country: v[1],
-    price: v[2]
-  }));
-
-  return function tableDataDriver() {
-    return Rx.Observable.just(locations)
-      .map(locations => state => Object.assign({}, {locations}));
+    DataMapEU: prepareDataMap$(containerEU$, statistics$),
+    DataMapAS: prepareDataMap$(containerAS$, statistics$),
+    DataMapUS: prepareDataMap$(containerUS$, statistics$)
   };
 }
 
 let drivers = {
   DOM: makeDOMDriver('#app'),
   TableData: makeTableDataDriver(),
-  DataMapEU: makeDatamapDriver('europe', 'datamap-europe'),
-  DataMapAS: makeDatamapDriver('asia', 'datamap-asia'),
-  DataMapUS: makeDatamapDriver('us', 'datamap-us')
+  DataMapEU: makeDatamapDriver('europe'),
+  DataMapAS: makeDatamapDriver('asia'),
+  DataMapUS: makeDatamapDriver('us')
 };
 
 Cycle.run(main, drivers);

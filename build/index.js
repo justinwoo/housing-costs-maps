@@ -61,24 +61,23 @@
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 	
+	var _rx = __webpack_require__(/*! rx */ 3);
+	
+	var _rx2 = _interopRequireDefault(_rx);
+	
 	var _cycleCore = __webpack_require__(/*! @cycle/core */ 2);
 	
 	var _cycleCore2 = _interopRequireDefault(_cycleCore);
 	
 	var _cycleDom = __webpack_require__(/*! @cycle/dom */ 6);
 	
-	var _rx = __webpack_require__(/*! rx */ 3);
+	var _tableDataDriver = __webpack_require__(/*! ./table-data-driver */ 126);
 	
-	var _rx2 = _interopRequireDefault(_rx);
+	var _tableDataDriver2 = _interopRequireDefault(_tableDataDriver);
 	
 	var _datamapDriver = __webpack_require__(/*! ./datamap-driver */ 121);
 	
 	var _datamapDriver2 = _interopRequireDefault(_datamapDriver);
-	
-	function log(name, value) {
-	  console.log(name, value);
-	  return value;
-	}
 	
 	function locationsList(locations) {
 	  var children = locations.map(function (location) {
@@ -87,8 +86,33 @@
 	  return (0, _cycleDom.h)('table', (0, _cycleDom.h)('tbody', children));
 	}
 	
+	function alternativeView(state) {
+	  return _rx2['default'].Observable.interval(1000).map(function (time) {
+	    if (time % 2 === 0) {
+	      return (0, _cycleDom.h)('div');
+	    } else {
+	      return (0, _cycleDom.h)('div', [(0, _cycleDom.h)('div', { id: 'datamap', className: 'sections' }, [(0, _cycleDom.h)('div', { className: 'datamap-europe' }), (0, _cycleDom.h)('div', { className: 'datamap-asia' }), (0, _cycleDom.h)('div', { className: 'datamap-us' })]), (0, _cycleDom.h)('div', { style: { width: '300px', margin: 'auto' } }, [locationsList(state.locations)])]);
+	    }
+	  });
+	}
+	
 	function view(state) {
-	  return (0, _cycleDom.h)('div', [(0, _cycleDom.h)('div', { style: { width: '300px', margin: 'auto' } }, [locationsList(state.locations)])]);
+	  return (0, _cycleDom.h)('div', [(0, _cycleDom.h)('div', { id: 'datamap', className: 'sections' }, [(0, _cycleDom.h)('div', { className: 'datamap-europe' }), (0, _cycleDom.h)('div', { className: 'datamap-asia' }), (0, _cycleDom.h)('div', { className: 'datamap-us' })]), (0, _cycleDom.h)('div', { style: { width: '300px', margin: 'auto' } }, [locationsList(state.locations)])]);
+	}
+	
+	function prepareDataMap$(container$, statistics$) {
+	  return _rx2['default'].Observable.combineLatest(container$, statistics$, function (container, statistics) {
+	    return {
+	      container: container, statistics: statistics
+	    };
+	  });
+	}
+	
+	function getDOMElement$(DOMDriver, selector) {
+	  var DOMObservable = DOMDriver.select(selector).observable;
+	  return DOMObservable.map(function (results) {
+	    return results[0];
+	  });
 	}
 	
 	//Location : {
@@ -172,41 +196,24 @@
 	    };
 	  });
 	
+	  var containerEU$ = getDOMElement$(drivers.DOM, '.datamap-europe');
+	  var containerAS$ = getDOMElement$(drivers.DOM, '.datamap-asia');
+	  var containerUS$ = getDOMElement$(drivers.DOM, '.datamap-us');
+	
 	  return {
 	    DOM: view$,
-	    DataMapEU: statistics$,
-	    DataMapAS: statistics$,
-	    DataMapUS: statistics$
-	  };
-	}
-	
-	function makeTableDataDriver() {
-	  var data = [['Tokyo', 'JPN', 37.86], ['Nagoya', 'JPN', 47.71], ['Kyoto', 'JPN', 59.29], ['Nagoya', 'JPN', 49.57], ['Tokyo', 'JPN', 64.43], ['Aomori', 'JPN', 47.00], ['Hakodate', 'JPN', 56.00], ['Sapporo', 'JPN', 33.11], ['Hong Kong', 'HKG', 46.70], ['Washington', 'USA', 56.86], ['Helsinki', 'FIN', 48.13], ['Copenhagen', 'DNK', 39.50], ['Hamburg', 'DEU', 59.00], ['Groningen', 'NLD', 45.00], ['Rotterdam', 'NLD', 48.00], ['Leuven', 'BEL', 29.21], ['San Francisco', 'USA', 113]];
-	
-	  var locations = data.map(function (v, i) {
-	    return {
-	      id: i,
-	      name: v[0],
-	      country: v[1],
-	      price: v[2]
-	    };
-	  });
-	
-	  return function tableDataDriver() {
-	    return _rx2['default'].Observable.just(locations).map(function (locations) {
-	      return function (state) {
-	        return Object.assign({}, { locations: locations });
-	      };
-	    });
+	    DataMapEU: prepareDataMap$(containerEU$, statistics$),
+	    DataMapAS: prepareDataMap$(containerAS$, statistics$),
+	    DataMapUS: prepareDataMap$(containerUS$, statistics$)
 	  };
 	}
 	
 	var drivers = {
 	  DOM: (0, _cycleDom.makeDOMDriver)('#app'),
-	  TableData: makeTableDataDriver(),
-	  DataMapEU: (0, _datamapDriver2['default'])('europe', 'datamap-europe'),
-	  DataMapAS: (0, _datamapDriver2['default'])('asia', 'datamap-asia'),
-	  DataMapUS: (0, _datamapDriver2['default'])('us', 'datamap-us')
+	  TableData: (0, _tableDataDriver2['default'])(),
+	  DataMapEU: (0, _datamapDriver2['default'])('europe'),
+	  DataMapAS: (0, _datamapDriver2['default'])('asia'),
+	  DataMapUS: (0, _datamapDriver2['default'])('us')
 	};
 	
 	_cycleCore2['default'].run(main, drivers);
@@ -19246,25 +19253,39 @@
 	  if (value < 55) return 'MEDIUM';else return 'HIGH';
 	}
 	
-	function makeDatamapDriver(region, container) {
-	  var datamap = new _datamaps2['default']({
-	    element: document.getElementById(container),
-	    setProjection: getProjection(region),
-	    geographyConfig: {
-	      popupTemplate: function popupTemplate(geo, data) {
-	        return ['<div class="hoverinfo"><strong>', '' + geo.properties.name, data ? ': ' + data.price : '', '</strong></div>'].join('');
-	      }
-	    },
-	    fills: {
-	      LOW: '#2ca02c',
-	      MEDIUM: '#ff7f0e',
-	      HIGH: '#d62728',
-	      defaultFill: "lightgrey"
-	    }
-	  });
-	
+	function makeDatamapDriver(region) {
 	  return function datamapDriver(input$) {
-	    input$.subscribe(function (statistics) {
+	    var datamap = undefined;
+	
+	    input$.subscribe(function (_ref) {
+	      var container = _ref.container;
+	      var statistics = _ref.statistics;
+	
+	      if (!container) {
+	        datamap = null;
+	        return;
+	      } else if (!datamap) {
+	        datamap = new _datamaps2['default']({
+	          element: container,
+	          setProjection: getProjection(region),
+	          geographyConfig: {
+	            popupTemplate: function popupTemplate(geo, data) {
+	              return ['<div class="hoverinfo"><strong>', '' + geo.properties.name, data ? ': ' + data.price : '', '</strong></div>'].join('');
+	            }
+	          },
+	          fills: {
+	            LOW: '#2ca02c',
+	            MEDIUM: '#ff7f0e',
+	            HIGH: '#d62728',
+	            defaultFill: "lightgrey"
+	          }
+	        });
+	      }
+	
+	      if (!datamap) {
+	        return;
+	      }
+	
 	      var choroPleth = statistics.byCountry.reduce(function (a, country) {
 	        a[country.name] = {
 	          price: country.price,
@@ -19274,13 +19295,11 @@
 	      }, {});
 	      datamap.updateChoropleth(choroPleth);
 	
-	      var bubbles = statistics.byCity.map(function (_ref) {
-	        var name = _ref.name;
-	        var price = _ref.price;
+	      var bubbles = statistics.byCity.map(function (_ref2) {
+	        var name = _ref2.name;
+	        var price = _ref2.price;
 	
-	        console.log('name', name);
 	        var result = (0, _getCoordinates3['default'])(name);
-	        console.log('result', result);
 	
 	        var _getCoordinates = (0, _getCoordinates3['default'])(name);
 	
@@ -41695,6 +41714,43 @@
 	
 	function getCoordinates(name) {
 	  return COORDINATES[name];
+	}
+	
+	module.exports = exports['default'];
+
+/***/ },
+/* 126 */
+/*!**********************************!*\
+  !*** ./src/table-data-driver.js ***!
+  \**********************************/
+/***/ function(module, exports) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, '__esModule', {
+	  value: true
+	});
+	exports['default'] = makeTableDataDriver;
+	
+	function makeTableDataDriver() {
+	  var data = [['Tokyo', 'JPN', 37.86], ['Nagoya', 'JPN', 47.71], ['Kyoto', 'JPN', 59.29], ['Nagoya', 'JPN', 49.57], ['Tokyo', 'JPN', 64.43], ['Aomori', 'JPN', 47.00], ['Hakodate', 'JPN', 56.00], ['Sapporo', 'JPN', 33.11], ['Hong Kong', 'HKG', 46.70], ['Washington', 'USA', 56.86], ['Helsinki', 'FIN', 48.13], ['Copenhagen', 'DNK', 39.50], ['Hamburg', 'DEU', 59.00], ['Groningen', 'NLD', 45.00], ['Rotterdam', 'NLD', 48.00], ['Leuven', 'BEL', 29.21], ['San Francisco', 'USA', 113]];
+	
+	  var locations = data.map(function (v, i) {
+	    return {
+	      id: i,
+	      name: v[0],
+	      country: v[1],
+	      price: v[2]
+	    };
+	  });
+	
+	  return function tableDataDriver() {
+	    return Rx.Observable.just(locations).map(function (locations) {
+	      return function (state) {
+	        return Object.assign({}, { locations: locations });
+	      };
+	    });
+	  };
 	}
 	
 	module.exports = exports['default'];
