@@ -61,21 +61,21 @@
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 	
-	var _rx = __webpack_require__(/*! rx */ 3);
+	var _rx = __webpack_require__(/*! rx */ 2);
 	
 	var _rx2 = _interopRequireDefault(_rx);
 	
-	var _cycleCore = __webpack_require__(/*! @cycle/core */ 2);
+	var _cycleCore = __webpack_require__(/*! @cycle/core */ 5);
 	
 	var _cycleCore2 = _interopRequireDefault(_cycleCore);
 	
 	var _cycleDom = __webpack_require__(/*! @cycle/dom */ 6);
 	
-	var _tableDataDriver = __webpack_require__(/*! ./table-data-driver */ 126);
+	var _tableDataDriver = __webpack_require__(/*! ./table-data-driver */ 121);
 	
 	var _tableDataDriver2 = _interopRequireDefault(_tableDataDriver);
 	
-	var _datamapDriver = __webpack_require__(/*! ./datamap-driver */ 121);
+	var _datamapDriver = __webpack_require__(/*! ./datamap-driver */ 122);
 	
 	var _datamapDriver2 = _interopRequireDefault(_datamapDriver);
 	
@@ -123,14 +123,12 @@
 	//}
 	
 	//State : {
-	//locations: List Location,
-	//error: String
+	//locations: List Location
 	//}
 	
 	function main(drivers) {
 	  var BASE_STATE = {
-	    locations: [],
-	    error: null
+	    locations: []
 	  };
 	
 	  var state$ = _rx2['default'].Observable.merge(drivers.TableData).startWith(BASE_STATE).scan(function (a, mapper) {
@@ -220,156 +218,6 @@
 
 /***/ },
 /* 2 */
-/*!************************************!*\
-  !*** ./~/@cycle/core/lib/cycle.js ***!
-  \************************************/
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	
-	var Rx = __webpack_require__(/*! rx */ 3);
-	
-	function makeRequestProxies(drivers) {
-	  var requestProxies = {};
-	  for (var _name in drivers) {
-	    if (drivers.hasOwnProperty(_name)) {
-	      requestProxies[_name] = new Rx.ReplaySubject(1);
-	    }
-	  }
-	  return requestProxies;
-	}
-	
-	function callDrivers(drivers, requestProxies) {
-	  var responses = {};
-	  for (var _name2 in drivers) {
-	    if (drivers.hasOwnProperty(_name2)) {
-	      responses[_name2] = drivers[_name2](requestProxies[_name2], _name2);
-	    }
-	  }
-	  return responses;
-	}
-	
-	function attachDisposeToRequests(requests, replicationSubscription) {
-	  Object.defineProperty(requests, "dispose", {
-	    enumerable: false,
-	    value: function value() {
-	      replicationSubscription.dispose();
-	    }
-	  });
-	  return requests;
-	}
-	
-	function makeDisposeResponses(responses) {
-	  return function dispose() {
-	    for (var _name3 in responses) {
-	      if (responses.hasOwnProperty(_name3) && typeof responses[_name3].dispose === "function") {
-	        responses[_name3].dispose();
-	      }
-	    }
-	  };
-	}
-	
-	function attachDisposeToResponses(responses) {
-	  Object.defineProperty(responses, "dispose", {
-	    enumerable: false,
-	    value: makeDisposeResponses(responses)
-	  });
-	  return responses;
-	}
-	
-	function logToConsoleError(err) {
-	  var target = err.stack || err;
-	  if (console && console.error) {
-	    console.error(target);
-	  }
-	}
-	
-	function replicateMany(observables, subjects) {
-	  return Rx.Observable.create(function (observer) {
-	    var subscription = new Rx.CompositeDisposable();
-	    setTimeout(function () {
-	      for (var _name4 in observables) {
-	        if (observables.hasOwnProperty(_name4) && subjects.hasOwnProperty(_name4) && !subjects[_name4].isDisposed) {
-	          subscription.add(observables[_name4].doOnError(logToConsoleError).subscribe(subjects[_name4].asObserver()));
-	        }
-	      }
-	      observer.onNext(subscription);
-	    }, 1);
-	
-	    return function dispose() {
-	      subscription.dispose();
-	      for (var x in subjects) {
-	        if (subjects.hasOwnProperty(x)) {
-	          subjects[x].dispose();
-	        }
-	      }
-	    };
-	  });
-	}
-	
-	function isObjectEmpty(obj) {
-	  for (var key in obj) {
-	    if (obj.hasOwnProperty(key)) {
-	      return false;
-	    }
-	  }
-	  return true;
-	}
-	
-	function run(main, drivers) {
-	  if (typeof main !== "function") {
-	    throw new Error("First argument given to Cycle.run() must be the 'main' " + "function.");
-	  }
-	  if (typeof drivers !== "object" || drivers === null) {
-	    throw new Error("Second argument given to Cycle.run() must be an object " + "with driver functions as properties.");
-	  }
-	  if (isObjectEmpty(drivers)) {
-	    throw new Error("Second argument given to Cycle.run() must be an object " + "with at least one driver function declared as a property.");
-	  }
-	
-	  var requestProxies = makeRequestProxies(drivers);
-	  var responses = callDrivers(drivers, requestProxies);
-	  var requests = main(responses);
-	  var subscription = replicateMany(requests, requestProxies).subscribe();
-	  var requestsWithDispose = attachDisposeToRequests(requests, subscription);
-	  var responsesWithDispose = attachDisposeToResponses(responses);
-	  return [requestsWithDispose, responsesWithDispose];
-	}
-	
-	var Cycle = {
-	  /**
-	   * Takes an `main` function and circularly connects it to the given collection
-	   * of driver functions.
-	   *
-	   * The `main` function expects a collection of "driver response" Observables
-	   * as input, and should return a collection of "driver request" Observables.
-	   * A "collection of Observables" is a JavaScript object where
-	   * keys match the driver names registered by the `drivers` object, and values
-	   * are Observables or a collection of Observables.
-	   *
-	   * @param {Function} main a function that takes `responses` as input
-	   * and outputs a collection of `requests` Observables.
-	   * @param {Object} drivers an object where keys are driver names and values
-	   * are driver functions.
-	   * @return {Array} an array where the first object is the collection of driver
-	   * requests, and the second object is the collection of driver responses, that
-	   * can be used for debugging or testing.
-	   * @function run
-	   */
-	  run: run,
-	
-	  /**
-	   * A shortcut to the root object of
-	   * [RxJS](https://github.com/Reactive-Extensions/RxJS).
-	   * @name Rx
-	   */
-	  Rx: Rx
-	};
-	
-	module.exports = Cycle;
-
-/***/ },
-/* 3 */
 /*!*****************************!*\
   !*** ./~/rx/dist/rx.all.js ***!
   \*****************************/
@@ -12485,10 +12333,10 @@
 	
 	}.call(this));
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(/*! (webpack)/buildin/module.js */ 4)(module), (function() { return this; }()), __webpack_require__(/*! ./~/node-libs-browser/~/process/browser.js */ 5)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(/*! (webpack)/buildin/module.js */ 3)(module), (function() { return this; }()), __webpack_require__(/*! ./~/node-libs-browser/~/process/browser.js */ 4)))
 
 /***/ },
-/* 4 */
+/* 3 */
 /*!***********************************!*\
   !*** (webpack)/buildin/module.js ***!
   \***********************************/
@@ -12507,7 +12355,7 @@
 
 
 /***/ },
-/* 5 */
+/* 4 */
 /*!**************************************************!*\
   !*** ./~/node-libs-browser/~/process/browser.js ***!
   \**************************************************/
@@ -12605,6 +12453,156 @@
 	};
 	process.umask = function() { return 0; };
 
+
+/***/ },
+/* 5 */
+/*!************************************!*\
+  !*** ./~/@cycle/core/lib/cycle.js ***!
+  \************************************/
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	
+	var Rx = __webpack_require__(/*! rx */ 2);
+	
+	function makeRequestProxies(drivers) {
+	  var requestProxies = {};
+	  for (var _name in drivers) {
+	    if (drivers.hasOwnProperty(_name)) {
+	      requestProxies[_name] = new Rx.ReplaySubject(1);
+	    }
+	  }
+	  return requestProxies;
+	}
+	
+	function callDrivers(drivers, requestProxies) {
+	  var responses = {};
+	  for (var _name2 in drivers) {
+	    if (drivers.hasOwnProperty(_name2)) {
+	      responses[_name2] = drivers[_name2](requestProxies[_name2], _name2);
+	    }
+	  }
+	  return responses;
+	}
+	
+	function attachDisposeToRequests(requests, replicationSubscription) {
+	  Object.defineProperty(requests, "dispose", {
+	    enumerable: false,
+	    value: function value() {
+	      replicationSubscription.dispose();
+	    }
+	  });
+	  return requests;
+	}
+	
+	function makeDisposeResponses(responses) {
+	  return function dispose() {
+	    for (var _name3 in responses) {
+	      if (responses.hasOwnProperty(_name3) && typeof responses[_name3].dispose === "function") {
+	        responses[_name3].dispose();
+	      }
+	    }
+	  };
+	}
+	
+	function attachDisposeToResponses(responses) {
+	  Object.defineProperty(responses, "dispose", {
+	    enumerable: false,
+	    value: makeDisposeResponses(responses)
+	  });
+	  return responses;
+	}
+	
+	function logToConsoleError(err) {
+	  var target = err.stack || err;
+	  if (console && console.error) {
+	    console.error(target);
+	  }
+	}
+	
+	function replicateMany(observables, subjects) {
+	  return Rx.Observable.create(function (observer) {
+	    var subscription = new Rx.CompositeDisposable();
+	    setTimeout(function () {
+	      for (var _name4 in observables) {
+	        if (observables.hasOwnProperty(_name4) && subjects.hasOwnProperty(_name4) && !subjects[_name4].isDisposed) {
+	          subscription.add(observables[_name4].doOnError(logToConsoleError).subscribe(subjects[_name4].asObserver()));
+	        }
+	      }
+	      observer.onNext(subscription);
+	    }, 1);
+	
+	    return function dispose() {
+	      subscription.dispose();
+	      for (var x in subjects) {
+	        if (subjects.hasOwnProperty(x)) {
+	          subjects[x].dispose();
+	        }
+	      }
+	    };
+	  });
+	}
+	
+	function isObjectEmpty(obj) {
+	  for (var key in obj) {
+	    if (obj.hasOwnProperty(key)) {
+	      return false;
+	    }
+	  }
+	  return true;
+	}
+	
+	function run(main, drivers) {
+	  if (typeof main !== "function") {
+	    throw new Error("First argument given to Cycle.run() must be the 'main' " + "function.");
+	  }
+	  if (typeof drivers !== "object" || drivers === null) {
+	    throw new Error("Second argument given to Cycle.run() must be an object " + "with driver functions as properties.");
+	  }
+	  if (isObjectEmpty(drivers)) {
+	    throw new Error("Second argument given to Cycle.run() must be an object " + "with at least one driver function declared as a property.");
+	  }
+	
+	  var requestProxies = makeRequestProxies(drivers);
+	  var responses = callDrivers(drivers, requestProxies);
+	  var requests = main(responses);
+	  var subscription = replicateMany(requests, requestProxies).subscribe();
+	  var requestsWithDispose = attachDisposeToRequests(requests, subscription);
+	  var responsesWithDispose = attachDisposeToResponses(responses);
+	  return [requestsWithDispose, responsesWithDispose];
+	}
+	
+	var Cycle = {
+	  /**
+	   * Takes an `main` function and circularly connects it to the given collection
+	   * of driver functions.
+	   *
+	   * The `main` function expects a collection of "driver response" Observables
+	   * as input, and should return a collection of "driver request" Observables.
+	   * A "collection of Observables" is a JavaScript object where
+	   * keys match the driver names registered by the `drivers` object, and values
+	   * are Observables or a collection of Observables.
+	   *
+	   * @param {Function} main a function that takes `responses` as input
+	   * and outputs a collection of `requests` Observables.
+	   * @param {Object} drivers an object where keys are driver names and values
+	   * are driver functions.
+	   * @return {Array} an array where the first object is the collection of driver
+	   * requests, and the second object is the collection of driver responses, that
+	   * can be used for debugging or testing.
+	   * @function run
+	   */
+	  run: run,
+	
+	  /**
+	   * A shortcut to the root object of
+	   * [RxJS](https://github.com/Reactive-Extensions/RxJS).
+	   * @name Rx
+	   */
+	  Rx: Rx
+	};
+	
+	module.exports = Cycle;
 
 /***/ },
 /* 6 */
@@ -13869,7 +13867,7 @@
 	
 	var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })();
 	
-	var _require = __webpack_require__(/*! @cycle/core */ 2);
+	var _require = __webpack_require__(/*! @cycle/core */ 5);
 	
 	var Rx = _require.Rx;
 	
@@ -14146,7 +14144,7 @@
 
 	"use strict";
 	
-	var _require = __webpack_require__(/*! @cycle/core */ 2);
+	var _require = __webpack_require__(/*! @cycle/core */ 5);
 	
 	var Rx = _require.Rx;
 	
@@ -16303,7 +16301,7 @@
 	
 	function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 	
-	var _require = __webpack_require__(/*! @cycle/core */ 2);
+	var _require = __webpack_require__(/*! @cycle/core */ 5);
 	
 	var Rx = _require.Rx;
 	
@@ -18301,7 +18299,7 @@
 
 	"use strict";
 	
-	var _require = __webpack_require__(/*! @cycle/core */ 2);
+	var _require = __webpack_require__(/*! @cycle/core */ 5);
 	
 	var Rx = _require.Rx;
 	
@@ -18381,7 +18379,7 @@
 
 	"use strict";
 	
-	var _require = __webpack_require__(/*! @cycle/core */ 2);
+	var _require = __webpack_require__(/*! @cycle/core */ 5);
 	
 	var Rx = _require.Rx;
 	
@@ -19147,7 +19145,7 @@
 	  value: true
 	});
 	
-	var _cycleCore = __webpack_require__(/*! @cycle/core */ 2);
+	var _cycleCore = __webpack_require__(/*! @cycle/core */ 5);
 	
 	var emptyStream = _cycleCore.Rx.Observable.empty();
 	
@@ -19190,6 +19188,43 @@
 
 /***/ },
 /* 121 */
+/*!**********************************!*\
+  !*** ./src/table-data-driver.js ***!
+  \**********************************/
+/***/ function(module, exports) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, '__esModule', {
+	  value: true
+	});
+	exports['default'] = makeTableDataDriver;
+	
+	function makeTableDataDriver() {
+	  var data = [['Tokyo', 'JPN', 37.86], ['Nagoya', 'JPN', 47.71], ['Kyoto', 'JPN', 59.29], ['Nagoya', 'JPN', 49.57], ['Tokyo', 'JPN', 64.43], ['Aomori', 'JPN', 47.00], ['Hakodate', 'JPN', 56.00], ['Sapporo', 'JPN', 33.11], ['Hong Kong', 'HKG', 46.70], ['Washington', 'USA', 56.86], ['Helsinki', 'FIN', 48.13], ['Copenhagen', 'DNK', 39.50], ['Hamburg', 'DEU', 59.00], ['Groningen', 'NLD', 45.00], ['Rotterdam', 'NLD', 48.00], ['Leuven', 'BEL', 29.21], ['San Francisco', 'USA', 113]];
+	
+	  var locations = data.map(function (v, i) {
+	    return {
+	      id: i,
+	      name: v[0],
+	      country: v[1],
+	      price: v[2]
+	    };
+	  });
+	
+	  return function tableDataDriver() {
+	    return Rx.Observable.just(locations).map(function (locations) {
+	      return function (state) {
+	        return Object.assign({}, { locations: locations });
+	      };
+	    });
+	  };
+	}
+	
+	module.exports = exports['default'];
+
+/***/ },
+/* 122 */
 /*!*******************************!*\
   !*** ./src/datamap-driver.js ***!
   \*******************************/
@@ -19207,15 +19242,15 @@
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 	
-	var _datamaps = __webpack_require__(/*! datamaps */ 122);
+	var _datamaps = __webpack_require__(/*! datamaps */ 123);
 	
 	var _datamaps2 = _interopRequireDefault(_datamaps);
 	
-	var _d3 = __webpack_require__(/*! d3 */ 123);
+	var _d3 = __webpack_require__(/*! d3 */ 124);
 	
 	var _d32 = _interopRequireDefault(_d3);
 	
-	var _getCoordinates2 = __webpack_require__(/*! ./get-coordinates */ 125);
+	var _getCoordinates2 = __webpack_require__(/*! ./get-coordinates */ 126);
 	
 	var _getCoordinates3 = _interopRequireDefault(_getCoordinates2);
 	
@@ -19332,7 +19367,7 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 122 */
+/* 123 */
 /*!*****************************************!*\
   !*** ./~/datamaps/dist/datamaps.all.js ***!
   \*****************************************/
@@ -31561,7 +31596,7 @@
 	
 	  // expose library
 	  if ( true ) {
-	    !(__WEBPACK_AMD_DEFINE_RESULT__ = function(require) { d3 = __webpack_require__(/*! d3 */ 123); topojson = __webpack_require__(/*! topojson */ 124); return Datamap; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	    !(__WEBPACK_AMD_DEFINE_RESULT__ = function(require) { d3 = __webpack_require__(/*! d3 */ 124); topojson = __webpack_require__(/*! topojson */ 125); return Datamap; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	  }
 	  else {
 	    window.Datamap = window.Datamaps = Datamap;
@@ -31582,7 +31617,7 @@
 
 
 /***/ },
-/* 123 */
+/* 124 */
 /*!********************!*\
   !*** ./~/d3/d3.js ***!
   \********************/
@@ -41094,7 +41129,7 @@
 	}();
 
 /***/ },
-/* 124 */
+/* 125 */
 /*!********************************!*\
   !*** ./~/topojson/topojson.js ***!
   \********************************/
@@ -41637,7 +41672,7 @@
 
 
 /***/ },
-/* 125 */
+/* 126 */
 /*!********************************!*\
   !*** ./src/get-coordinates.js ***!
   \********************************/
@@ -41714,43 +41749,6 @@
 	
 	function getCoordinates(name) {
 	  return COORDINATES[name];
-	}
-	
-	module.exports = exports['default'];
-
-/***/ },
-/* 126 */
-/*!**********************************!*\
-  !*** ./src/table-data-driver.js ***!
-  \**********************************/
-/***/ function(module, exports) {
-
-	'use strict';
-	
-	Object.defineProperty(exports, '__esModule', {
-	  value: true
-	});
-	exports['default'] = makeTableDataDriver;
-	
-	function makeTableDataDriver() {
-	  var data = [['Tokyo', 'JPN', 37.86], ['Nagoya', 'JPN', 47.71], ['Kyoto', 'JPN', 59.29], ['Nagoya', 'JPN', 49.57], ['Tokyo', 'JPN', 64.43], ['Aomori', 'JPN', 47.00], ['Hakodate', 'JPN', 56.00], ['Sapporo', 'JPN', 33.11], ['Hong Kong', 'HKG', 46.70], ['Washington', 'USA', 56.86], ['Helsinki', 'FIN', 48.13], ['Copenhagen', 'DNK', 39.50], ['Hamburg', 'DEU', 59.00], ['Groningen', 'NLD', 45.00], ['Rotterdam', 'NLD', 48.00], ['Leuven', 'BEL', 29.21], ['San Francisco', 'USA', 113]];
-	
-	  var locations = data.map(function (v, i) {
-	    return {
-	      id: i,
-	      name: v[0],
-	      country: v[1],
-	      price: v[2]
-	    };
-	  });
-	
-	  return function tableDataDriver() {
-	    return Rx.Observable.just(locations).map(function (locations) {
-	      return function (state) {
-	        return Object.assign({}, { locations: locations });
-	      };
-	    });
-	  };
 	}
 	
 	module.exports = exports['default'];

@@ -70,14 +70,12 @@ function getDOMElement$(DOMDriver, selector) {
 //}
 
 //State : {
-  //locations: List Location,
-  //error: String
+  //locations: List Location
 //}
 
 function main(drivers) {
   const BASE_STATE = {
-    locations: [],
-    error: null
+    locations: []
   };
 
   let state$ = Rx.Observable
